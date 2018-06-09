@@ -15,22 +15,21 @@ public class TestDatabase {
     private EntityManager em;
 
     @Before
-    public void start() {
+    public void initialize() {
         EntityManagerFactory emf = Persistence.createEntityManagerFactory("primary");
         em = emf.createEntityManager();
 
-        em.getTransaction().begin();
-
-        Person person = new Person();
-        person.setName("Test");
-        em.persist(person);
-
-        em.getTransaction().commit();
     }
 
     @Test
-    public void testData() {
-        Person person = em.createQuery("SELECT p FROM Person p", Person.class).getSingleResult();
+    public void test() {
+        em.getTransaction().begin();
+        Person person = new Person();
+        person.setName("Test");
+        em.persist(person);
+        em.getTransaction().commit();
+
+        person = em.createQuery("SELECT p FROM Person p", Person.class).getSingleResult();
         Assert.assertNotNull(person);
         Assert.assertEquals("Test", person.getName());
     }
