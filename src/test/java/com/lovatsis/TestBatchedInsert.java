@@ -36,22 +36,27 @@ public class TestBatchedInsert {
     private void persistNewObjectsInParallelBatchesWithMultipleTransactions(long total) {
         int threads = 4; //Number of threads
 
-        List<Integer> chunkIteratorList = new ArrayList<>();
+        // Split the job in parallel threads (partitions)
+        List<Integer> partitions = new ArrayList<>();
         for (int t = 1; t <= threads; t++) {
-            chunkIteratorList.add(t);
+            partitions.add(t);
         }
 
-        chunkIteratorList.parallelStream().forEach(chunkId -> {
-            //Each thread will have its own em, so each em will have a smaller data package to process.
+        partitions.parallelStream().forEach(partitionId -> {
+            // Each thread will process a smaller amount of data and will have its own em,
+            // so each em will have a smaller data package to process.
             EntityManager em = emf.createEntityManager();
 
-            long chunkSize = (long) Math.ceil((double) total / (double) chunkIteratorList.size());
-            long iStart = ((chunkId - 1) * chunkSize) + 1;
-            long iEnd = Math.min(chunkSize * chunkId, total);
+            //Each partition will handle a specific subset of the total data
+            long partitionSize = (long) Math.ceil((double) total / (double) partitions.size());
+            long iStart = ((partitionId - 1) * partitionSize) + 1;
+            long iEnd = Math.min(partitionSize * partitionId, total);
 
             em.getTransaction().begin();
             for (long i = iStart; i <= iEnd; i++) {
-                //To further ease the em's job within the same thread, its data is split into multiple transactions.
+                //Each partition is further divided into chunks in order to
+                //a. split the transaction into multiple smaller ones to avoid huge rollbacks
+                //b. increase the persistence performance of the em
                 if (i % 20L == 0L) {
                     em.getTransaction().commit();
                     em.getTransaction().begin();
